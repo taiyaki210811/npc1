@@ -1,0 +1,48 @@
+-- StarterGui/SpawnGUIScreen/SpawnNPCLocalScript.lua
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- サーバーに送信するRemoteEventの参照を取得
+local spawnNPCEvent = ReplicatedStorage:WaitForChild("SpawnNPCRequest")
+
+-- GUI要素への参照
+local screenGui = script.Parent -- LocalScriptがScreenGuiの直下にある場合
+
+local xInput = screenGui:WaitForChild("XCoordinateInput")
+local yInput = screenGui:WaitForChild("YCoordinateInput")
+local zInput = screenGui:WaitForChild("ZCoordinateInput")
+local spawnButton = screenGui:WaitForChild("SpawnNPCButton")
+
+-- ボタンがクリックされたときの処理
+spawnButton.MouseButton1Click:Connect(function()
+    -- 各テキストボックスから文字列として座標を取得
+    local xText = xInput.Text
+    local yText = yInput.Text
+    local zText = zInput.Text
+
+    -- 文字列を数値に変換。変換できない場合はnilが返る
+    local x = tonumber(xText)
+    local y = tonumber(yText)
+    local z = tonumber(zText)
+
+    -- 入力が有効な数値であることを確認
+    if x == nil then
+        warn("X座標の入力が正しくありません。数値で入力してください。")
+        return
+    end
+    if y == nil then
+        warn("Y座標の入力が正しくありません。数値で入力してください。")
+        return
+    end
+    if z == nil then
+        warn("Z座標の入力が正しくありません。数値で入力してください。")
+        return
+    end
+
+    -- サーバーにNPCスポーンのリクエストと座標を送信
+    spawnNPCEvent:FireServer(x, y, z)
+    print("NPCスポーンのリクエストをサーバーに送信しました: X=" .. x .. ", Y=" .. y .. ", Z=" .. z)
+end)
+
+print("Local Spawn Script Loaded. Button click listener attached.")
