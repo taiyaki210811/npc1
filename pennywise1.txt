@@ -1,0 +1,70 @@
+-- ServerScriptService/SpawnNPCServerScript.lua
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- NPCのモデルID
+local NPC_MODEL_ID = 4662240519
+
+-- RemoteEventを作成（クライアントからサーバーへの通信用）
+local spawnNPCEvent = Instance.new("RemoteEvent")
+spawnNPCEvent.Name = "SpawnNPCRequest"
+spawnNPCEvent.Parent = ReplicatedStorage -- ReplicatedStorageに配置してクライアントとサーバーの両方からアクセス可能にする
+
+-- NPCをスポーンさせる関数
+-- FireServerの第一引数（プレイヤーオブジェクト）と、クライアントから送られてきたX, Y, Z座標を受け取る
+local function spawnNPC(player, x, y, z)
+    -- 受け取った座標が有効な数値か確認
+    if type(x) ~= "number" or type(y) ~= "number" or type(z) ~= "number" then
+        warn(player.Name .. " から無効な座標が送信されました: X=" .. tostring(x) .. ", Y=" .. tostring(y) .. ", Z=" .. tostring(z))
+        return
+    end
+
+    local spawnPosition = Vector3.new(x, y, z)
+
+    -- NPCをReplicatedStorageからロード
+    local InsertService = game:GetService("InsertService")
+    local npcModel = nil
+    local success, message = pcall(function()
+        npcModel = InsertService:LoadAsset(NPC_MODEL_ID)
+    end)
+
+    if not success or not npcModel then
+        warn("NPCモデルID " .. NPC_MODEL_ID .. " のロードに失敗しました: " .. (message or "不明なエラー"))
+        return
+    end
+
+    -- モデルが適切にロードされたことを確認
+    if npcModel.ClassName == "Model" then
+        npcModel.Parent = workspace
+
+        -- NPCのモデルの中心をスポーン位置に移動
+        if npcModel:FindFirstChild("HumanoidRootPart") then
+            npcModel:FindFirstChild("HumanoidRootPart").CFrame = CFrame.new(spawnPosition)
+        elseif npcModel.PrimaryPart then
+            npcModel.PrimaryPart.CFrame = CFrame.new(spawnPosition)
+        else
+            -- PrimaryPartがない場合、モデル全体を移動させる
+            -- モデルのBoundingBoxの中心を取得し、CFrameを設定
+            local modelCenter = npcModel:GetBoundingBox().p
+            local offset = spawnPosition - modelCenter
+            for _, part in ipairs(npcModel:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CFrame = part.CFrame + offset
+                end
+            end
+            print("NPC " .. NPC_MODEL_ID .. " のPrimaryPartが見つからなかったため、モデル全体を移動させました。")
+        end
+
+        print("NPC " .. NPC_MODEL_ID .. " が指定された座標 " .. tostring(spawnPosition) .. " にスポーンしました（プレイヤー: " .. player.Name .. "）。")
+    else
+        warn("ロードされたアセットはモデルではありませんでした。ID: " .. NPC_MODEL_ID)
+        npcModel:Destroy() -- ロードされたものがモデルでなければ削除
+    end
+end
+
+-- RemoteEventが発火したときにspawnNPC関数を呼び出す
+-- :OnServerEvent は、イベントを発火させたプレイヤーを自動的に最初の引数として渡します
+spawnNPCEvent.OnServerEvent:Connect(spawnNPC)
+
+print("Server Spawn Script Loaded. RemoteEvent '" .. spawnNPCEvent.Name .. "' created in ReplicatedStorage.")
