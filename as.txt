@@ -1,0 +1,22 @@
+-- スクリプトタイプ: Server Script (Workspace, ServerScriptServiceなど)
+
+game.Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function(character)
+        local humanoid = character:WaitForChild("Humanoid")
+
+        -- HumanoidのHealthが変更されたときにトリガーされる関数
+        humanoid.HealthChanged:Connect(function(health)
+            -- Healthが最大値でない場合、すぐに最大値に戻す
+            if health < humanoid.MaxHealth then
+                humanoid.Health = humanoid.MaxHealth
+            end
+        end)
+
+        -- あるいは、定期的にHealthを最大にする（こちらはあまり推奨されないが、確実）
+        -- while wait(0.1) do -- 0.1秒ごとにチェック
+        --     if humanoid and humanoid.Parent and humanoid.Health < humanoid.MaxHealth then
+        --         humanoid.Health = humanoid.MaxHealth
+        --     end
+        -- end
+    end)
+end)
