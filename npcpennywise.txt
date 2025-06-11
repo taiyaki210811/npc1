@@ -1,0 +1,83 @@
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- NPCのモデルID
+local NPC_MODEL_ID = 4662240519
+
+-- スポーン距離（プレイヤーからどれくらい離れてスポーンさせるか）
+local SPAWN_DISTANCE = 10
+
+-- NPCをスポーンさせる関数
+local function spawnNPC(player)
+    if not player or not player.Character then
+        return
+    end
+
+    local character = player.Character
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+
+    if not humanoidRootPart then
+        return
+    end
+
+    -- プレイヤーの座標を取得
+    local playerPosition = humanoidRootPart.Position
+
+    -- NPCをReplicatedStorageからロード
+    -- InsertServiceはセキュリティ上の理由からサーバーサイドでのみ動作します
+    local InsertService = game:GetService("InsertService")
+    local npcModel = nil
+    pcall(function()
+        npcModel = InsertService:LoadAsset(NPC_MODEL_ID)
+    end)
+
+    if not npcModel then
+        warn("NPCモデルID " .. NPC_MODEL_ID .. " のロードに失敗しました。このIDは公開されているモデルである必要があります。")
+        return
+    end
+
+    -- モデルが適切にロードされたことを確認
+    if npcModel.ClassName == "Model" then
+        npcModel.Parent = workspace
+
+        -- NPCのスポーン位置を計算（プレイヤーの少し前）
+        -- HumanoidRootPartのLookVectorを使ってプレイヤーの向いている方向にスポーンさせるのが自然です
+        local spawnPosition = playerPosition + humanoidRootPart.CFrame.LookVector * SPAWN_DISTANCE
+        spawnPosition = Vector3.new(spawnPosition.X, spawnPosition.Y + 3, spawnPosition.Z) -- 地面にめり込まないようにY座標を少し上げる
+
+        -- NPCのモデルの中心をスポーン位置に移動
+        -- PrimaryPartがある場合、PrimaryPartのCFrameを設定するのが一般的です
+        if npcModel:FindFirstChild("HumanoidRootPart") then
+            npcModel:FindFirstChild("HumanoidRootPart").CFrame = CFrame.new(spawnPosition)
+        elseif npcModel.PrimaryPart then
+            npcModel.PrimaryPart.CFrame = CFrame.new(spawnPosition)
+        else
+            -- PrimaryPartがない場合、モデル全体を移動させる
+            npcModel:SetPrimaryPartCFrame(CFrame.new(spawnPosition))
+        end
+
+        print("NPC " .. NPC_MODEL_ID .. " がプレイヤー " .. player.Name .. " の近くにスポーンしました。")
+    else
+        warn("ロードされたアセットはモデルではありませんでした。")
+        npcModel:Destroy() -- ロードされたものがモデルでなければ削除
+    end
+end
+
+-- プレイヤーがゲームに参加したときにNPCをスポーンさせる（例）
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function(character)
+        -- キャラクターがロードされた後にNPCをスポーン
+        spawnNPC(player)
+    end)
+end)
+
+-- あるいは、特定のイベントやユーザー入力に応じてスポーンさせることもできます
+-- 例: チャットコマンドでスポーンさせる場合 (Server Script)
+-- local function onChatMessage(player, message)
+--     if message:lower() == "/spawnnpc" then
+--         spawnNPC(player)
+--     end
+-- end
+-- game.Players.PlayerAdded:Connect(function(player)
+--     player.Chatted:Connect(onChatMessage)
+-- end)
